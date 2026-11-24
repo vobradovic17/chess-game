@@ -8,6 +8,10 @@ const initialState = {
     turn: "white",
     nextMove: true,
     lastMove: null,
+    // { square, pawnSquare } when the side to move can capture en passant
+    enPassant: null,
+    // set by MOVE_PIECE, assigned to enPassant by END_MOVE if the move is legal
+    pendingEnPassant: null,
   },
   players: {
     white: {
@@ -160,6 +164,17 @@ const reducer = (state = initialState, action) => {
 
       if (rightSideAttack) {
         chessBoard[rowForward][columnForwardRight].isTargetSquare = true;
+      }
+
+      // en passant: target square is empty, so it is not covered by the attacks above
+      const enPassant = newState.gameControls.enPassant;
+      if (enPassant) {
+        [columnForwardLeft, columnForwardRight].forEach((attackColumn) => {
+          const candidate = chessBoard[rowForward][attackColumn];
+          if (candidate && candidate.square === enPassant.square) {
+            candidate.isTargetSquare = true;
+          }
+        });
       }
     }
 
@@ -357,6 +372,8 @@ const reducer = (state = initialState, action) => {
 
     newState.players[onTurn] = { ...newState.players[onTurn] };
 
+    newState.gameControls = { ...newState.gameControls };
+
     newState.gameControls.lastMove = newState.chessBoard.map((item) => {
       return [...item].map((subitem) => {
         return { ...subitem };
@@ -381,6 +398,37 @@ const reducer = (state = initialState, action) => {
 
     if (newSquare.isOccupied) {
       newState.players[onTurn].piecesTaken.push(newSquare.piece);
+    }
+
+    const enPassant = newState.gameControls.enPassant;
+    newState.gameControls.pendingEnPassant = null;
+
+    if (piece.piece == "pawn") {
+      // en passant capture: pawn moved diagonally onto the empty en passant square
+      if (
+        enPassant &&
+        newSquare.square === enPassant.square &&
+        newSquare.column !== oldSquare.column
+      ) {
+        const capturedSquare = newState.chessBoard
+          .flat()
+          .find((item) => item.square == enPassant.pawnSquare);
+
+        newState.players[onTurn].piecesTaken.push(capturedSquare.piece);
+
+        capturedSquare.piece = null;
+        capturedSquare.isOccupied = false;
+        capturedSquare.occupiedByPlayer = null;
+        capturedSquare.occupiedByFigure = null;
+      }
+
+      // double step: remember the skipped square for the opponent's next move
+      if (Math.abs(newSquare.row - oldSquare.row) == 2) {
+        newState.gameControls.pendingEnPassant = {
+          square: `${oldSquare.column}${(newSquare.row + oldSquare.row) / 2}`,
+          pawnSquare: newSquare.square,
+        };
+      }
     }
 
     newSquare.piece = piece;
@@ -837,9 +885,14 @@ const reducer = (state = initialState, action) => {
     newState.gameControls = { ...newState.gameControls };
 
     if (!newState.gameControls.nextMove) {
+      // illegal move was reverted: keep the existing en passant opportunity
       newState.gameControls.nextMove = true;
+      newState.gameControls.pendingEnPassant = null;
       return newState;
     }
+
+    newState.gameControls.enPassant = newState.gameControls.pendingEnPassant;
+    newState.gameControls.pendingEnPassant = null;
 
     let player = action.payload.player;
 

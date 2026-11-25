@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 
 import { columns } from "../utils";
 
+const promotionPieces = ["queen", "rook", "bishop", "knight"];
+
 export default function ChessBoard() {
+  // target square of a pawn move that is waiting for the player to pick a piece
+  const [promotionSquare, setPromotionSquare] = useState(null);
+
   const chessBoard = useSelector((state) => {
     return state.chessBoard;
   });
@@ -93,23 +99,40 @@ export default function ChessBoard() {
 
     // if piece is selected and player clicks on a square available for move
     if (pieceSelected && isTargetSquare) {
-      dispatch({
-        type: "MOVE_PIECE",
-        payload: { player: turn, square: square },
-      });
+      const selected = chessBoard.flat().find((item) => item.isCurrentSquare);
+      const isPromotion =
+        selected?.piece?.piece === "pawn" && (row === 8 || row === 1);
 
-      dispatch({
-        type: "CHECK_OWN_CHECK",
-        payload: { player: turn, square: square },
-      });
-
-      dispatch({
-        type: "CHECK_OPPONENT_CHECK",
-        payload: { player: turn, square: square },
-      });
-
-      dispatch({ type: "END_MOVE", payload: { player: turn, playerOnTurn } });
+      if (isPromotion) {
+        setPromotionSquare(square);
+      } else {
+        movePiece(square);
+      }
     }
+  }
+
+  function movePiece(square, promotion) {
+    dispatch({
+      type: "MOVE_PIECE",
+      payload: { player: turn, square: square, promotion },
+    });
+
+    dispatch({
+      type: "CHECK_OWN_CHECK",
+      payload: { player: turn, square: square },
+    });
+
+    dispatch({
+      type: "CHECK_OPPONENT_CHECK",
+      payload: { player: turn, square: square },
+    });
+
+    dispatch({ type: "END_MOVE", payload: { player: turn, playerOnTurn } });
+  }
+
+  function handlePromotion(piece) {
+    movePiece(promotionSquare, piece);
+    setPromotionSquare(null);
   }
 
   const files = columns.map((column) => <span key={column}>{column}</span>);
@@ -132,6 +155,23 @@ export default function ChessBoard() {
           ></div>
         ))}
       </div>
+      {promotionSquare && (
+        // clicking outside the choices cancels the move
+        <div className="promotion" onClick={() => setPromotionSquare(null)}>
+          <div className="promotion__choices">
+            {promotionPieces.map((piece) => (
+              <button
+                key={piece}
+                type="button"
+                className={`promotion__choice ${turn}-${piece}`}
+                aria-label={`Promote to ${piece}`}
+                title={piece}
+                onClick={() => handlePromotion(piece)}
+              ></button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="board-frame__ranks board-frame__ranks--right">
         {ranks}
       </div>

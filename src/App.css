@@ -136,6 +136,41 @@ main {
     cursor: pointer;
 }
 
+.promotion {
+    grid-column: 2;
+    grid-row: 2;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.promotion__choices {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--bg);
+    box-shadow: var(--shadow);
+}
+
+/* two classes so the colors win over the `background` shorthand of the piece classes */
+.promotion .promotion__choice {
+    width: calc(var(--board-size) / 6);
+    aspect-ratio: 1;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    background-color: #b58863;
+    cursor: pointer;
+}
+
+.promotion .promotion__choice:hover,
+.promotion .promotion__choice:focus-visible {
+    border-color: var(--accent);
+    background-color: #f0d9b5;
+}
+
 /* This is not the way to do it because it will have to be animated via FLIP */
 .white-pawn {
     background: url('./assets/white-pawn.svg');

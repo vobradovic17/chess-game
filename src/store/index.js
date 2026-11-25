@@ -230,11 +230,7 @@ const reducer = (state = initialState, action) => {
     let isWhitePlayer = color == "white";
 
     // set movements for every piece by piece
-    // a pawn on the last rank has no moves (promotion is not implemented)
-    if (
-      piece == "pawn" &&
-      chessBoard[isWhitePlayer ? arrayRow - 1 : arrayRow + 1]
-    ) {
+    if (piece == "pawn") {
       let pawnOnStartingField = isWhitePlayer
         ? action.payload.square.row == 2
         : action.payload.square.row == 7;
@@ -575,6 +571,11 @@ const reducer = (state = initialState, action) => {
           pawnSquare: newSquare.square,
         };
       }
+    }
+
+    // promotion: a pawn reaching the last rank becomes the chosen piece
+    if (piece.piece == "pawn" && (newSquare.row == 8 || newSquare.row == 1)) {
+      piece = { ...piece, piece: action.payload.promotion || "queen" };
     }
 
     newSquare.piece = piece;

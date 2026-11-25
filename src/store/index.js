@@ -31,6 +31,71 @@ const initialState = {
   },
 };
 
+// is the square at [arrayRow][arrayColumn] attacked by any piece of attackingPlayer?
+const isSquareAttacked = (board, arrayRow, arrayColumn, attackingPlayer) => {
+  const at = (row, column) => board[row]?.[column] ?? null;
+  const isAttacker = (square, pieces) =>
+    square?.isOccupied &&
+    square.occupiedByPlayer === attackingPlayer &&
+    pieces.includes(square.piece.piece);
+
+  const pawnRow = arrayRow + (attackingPlayer === "white" ? 1 : -1);
+  if (
+    isAttacker(at(pawnRow, arrayColumn - 1), ["pawn"]) ||
+    isAttacker(at(pawnRow, arrayColumn + 1), ["pawn"])
+  ) {
+    return true;
+  }
+
+  const knightJumps = [
+    [-2, -1],
+    [-2, 1],
+    [-1, 2],
+    [1, 2],
+    [2, -1],
+    [2, 1],
+    [-1, -2],
+    [1, -2],
+  ];
+  if (
+    knightJumps.some(([r, c]) =>
+      isAttacker(at(arrayRow + r, arrayColumn + c), ["knight"]),
+    )
+  ) {
+    return true;
+  }
+
+  const directions = [
+    [-1, -1],
+    [-1, 1],
+    [1, -1],
+    [1, 1],
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ];
+  return directions.some(([r, c]) => {
+    const isDiagonal = r !== 0 && c !== 0;
+    const slider = isDiagonal ? "bishop" : "rook";
+
+    // adjacent square can also hold the king
+    if (isAttacker(at(arrayRow + r, arrayColumn + c), ["king"])) return true;
+
+    let row = arrayRow + r;
+    let column = arrayColumn + c;
+    while (at(row, column)) {
+      const square = at(row, column);
+      if (square.isOccupied) {
+        return isAttacker(square, [slider, "queen"]);
+      }
+      row += r;
+      column += c;
+    }
+    return false;
+  });
+};
+
 const reducer = (state = initialState, action) => {
   // action.type -> type of action. passed in from dispatch function from component
   // action.payload -> can be used to access payload data passed in from component via actions
@@ -357,6 +422,39 @@ const reducer = (state = initialState, action) => {
           }
         }
       });
+
+      // castling
+      const homeRow = isWhitePlayer ? 7 : 0;
+      const opponent = isWhitePlayer ? "black" : "white";
+      const kingPiece = chessBoard[arrayRow][arrayColumn].piece;
+
+      if (
+        arrayRow == homeRow &&
+        arrayColumn == 4 &&
+        !kingPiece.hasMoved &&
+        !isSquareAttacked(chessBoard, homeRow, 4, opponent)
+      ) {
+        const canCastle = (rookColumn, emptyColumns, kingPath) => {
+          const rook = chessBoard[homeRow][rookColumn].piece;
+          return (
+            rook?.piece == "rook" &&
+            rook.color == color &&
+            !rook.hasMoved &&
+            emptyColumns.every((c) => !chessBoard[homeRow][c].isOccupied) &&
+            kingPath.every(
+              (c) => !isSquareAttacked(chessBoard, homeRow, c, opponent),
+            )
+          );
+        };
+
+        if (canCastle(7, [5, 6], [5, 6])) {
+          chessBoard[homeRow][6].isTargetSquare = true;
+        }
+
+        if (canCastle(0, [1, 2, 3], [3, 2])) {
+          chessBoard[homeRow][2].isTargetSquare = true;
+        }
+      }
     }
     return newState;
   }
@@ -384,7 +482,8 @@ const reducer = (state = initialState, action) => {
       return item.square == newState.players[onTurn].squareSelected;
     });
 
-    let piece = oldSquare.piece;
+    // copy instead of mutating: piece objects are shared with the lastMove snapshot
+    let piece = { ...oldSquare.piece, hasMoved: true };
 
     oldSquare.piece = null;
     oldSquare.isOccupied = false;
@@ -435,6 +534,33 @@ const reducer = (state = initialState, action) => {
     newSquare.isOccupied = true;
     newSquare.occupiedByPlayer = piece.color;
     newSquare.occupiedByFigure = piece.piece;
+
+    // castling: king moved two columns, so bring the rook across
+    if (
+      piece.piece == "king" &&
+      Math.abs(
+        columns.indexOf(newSquare.column) - columns.indexOf(oldSquare.column),
+      ) == 2
+    ) {
+      const kingside = newSquare.column == "G";
+      const rank = newSquare.row;
+      const rookFrom = newState.chessBoard
+        .flat()
+        .find((item) => item.square == `${kingside ? "H" : "A"}${rank}`);
+      const rookTo = newState.chessBoard
+        .flat()
+        .find((item) => item.square == `${kingside ? "F" : "D"}${rank}`);
+
+      rookTo.piece = { ...rookFrom.piece, hasMoved: true };
+      rookTo.isOccupied = true;
+      rookTo.occupiedByPlayer = rookFrom.piece.color;
+      rookTo.occupiedByFigure = "rook";
+
+      rookFrom.piece = null;
+      rookFrom.isOccupied = false;
+      rookFrom.occupiedByPlayer = null;
+      rookFrom.occupiedByFigure = null;
+    }
   }
 
   // logic for checking if own king in under check

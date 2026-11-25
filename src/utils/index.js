@@ -39,6 +39,9 @@ export const createChessBoard = () => {
         piece.blockedByCheck = false;
       }
 
+      // used for castling rights
+      if (piece.piece) piece.hasMoved = false;
+
       rowArray.push({
         square: `${columns[colIndex]}${row}`,
         row: row,

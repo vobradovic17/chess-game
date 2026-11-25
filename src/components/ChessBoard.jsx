@@ -13,9 +13,16 @@ export default function ChessBoard() {
     return state.players[turn];
   });
 
+  const status = useSelector((state) => {
+    return state.gameControls.status;
+  });
+
   const dispatch = useDispatch();
 
   function handleMove(row, column) {
+    // game is over (checkmate or stalemate)
+    if (status !== "playing") return;
+
     // get clicked square from the chessboard
     const square = chessBoard.flat().find((square) => {
       return square.row === row && square.column === column;

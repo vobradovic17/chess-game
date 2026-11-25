@@ -8,6 +8,8 @@ const initialState = {
     turn: "white",
     nextMove: true,
     lastMove: null,
+    // "playing" | "checkmate" | "stalemate"
+    status: "playing",
     // { square, pawnSquare } when the side to move can capture en passant
     enPassant: null,
     // set by MOVE_PIECE, assigned to enPassant by END_MOVE if the move is legal
@@ -94,6 +96,47 @@ const isSquareAttacked = (board, arrayRow, arrayColumn, attackingPlayer) => {
     }
     return false;
   });
+};
+
+// does `player` have at least one legal move in `state`?
+// Reuses the reducer on cloned state (the reducer mutates players/gameControls
+// in place), so castling, en passant and own-check rules apply exactly as for real moves.
+const hasLegalMove = (state, player) => {
+  const ownSquares = state.chessBoard
+    .flat()
+    .filter((square) => square.occupiedByPlayer === player);
+
+  for (const from of ownSquares) {
+    const selected = structuredClone(state);
+    selected.players[player].squareSelected = from.square;
+
+    const withTargets = reducer(selected, {
+      type: "CHECK_MOVE_AVAILABILITY",
+      payload: { player, square: from },
+    });
+
+    const targets = withTargets.chessBoard
+      .flat()
+      .filter((square) => square.isTargetSquare);
+
+    for (const target of targets) {
+      const moved = reducer(structuredClone(withTargets), {
+        type: "MOVE_PIECE",
+        payload: { player, square: target },
+      });
+      const checked = reducer(moved, {
+        type: "CHECK_OWN_CHECK",
+        payload: { player },
+      });
+
+      // CHECK_OWN_CHECK sets nextMove to false when the move leaves the own king in check
+      if (checked.gameControls.nextMove) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 };
 
 const reducer = (state = initialState, action) => {
@@ -187,7 +230,11 @@ const reducer = (state = initialState, action) => {
     let isWhitePlayer = color == "white";
 
     // set movements for every piece by piece
-    if (piece == "pawn") {
+    // a pawn on the last rank has no moves (promotion is not implemented)
+    if (
+      piece == "pawn" &&
+      chessBoard[isWhitePlayer ? arrayRow - 1 : arrayRow + 1]
+    ) {
       let pawnOnStartingField = isWhitePlayer
         ? action.payload.square.row == 2
         : action.payload.square.row == 7;
@@ -1042,6 +1089,14 @@ const reducer = (state = initialState, action) => {
     newState.chessBoard.flat().forEach((square) => {
       square.isTargetSquare = false;
     });
+
+    // the side to move may have no legal move: checkmate or stalemate
+    const nextPlayer = newState.gameControls.turn;
+    if (!hasLegalMove(newState, nextPlayer)) {
+      newState.gameControls.status = newState.players[nextPlayer].underCheck
+        ? "checkmate"
+        : "stalemate";
+    }
 
     return newState;
   }

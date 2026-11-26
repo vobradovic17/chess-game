@@ -8,6 +8,8 @@ const initialState = {
     turn: "white",
     nextMove: true,
     lastMove: null,
+    // mover's piecesTaken before the last move, restored if the move is illegal
+    piecesStorage: null,
     // "playing" | "checkmate" | "stalemate"
     status: "playing",
   },
@@ -519,6 +521,9 @@ const reducer = (state = initialState, action) => {
       });
     });
 
+    newState.gameControls.piecesStorage =
+      newState.players[onTurn].piecesTaken;
+
     let oldSquare = newState.chessBoard.flat().find((item) => {
       return item.square == newState.players[onTurn].squareSelected;
     });
@@ -537,7 +542,10 @@ const reducer = (state = initialState, action) => {
     });
 
     if (newSquare.isOccupied) {
-      newState.players[onTurn].piecesTaken.push(newSquare.piece);
+      newState.players[onTurn].piecesTaken = [
+        ...newState.players[onTurn].piecesTaken,
+        newSquare.piece,
+      ];
     }
 
     const opponent = onTurn == "white" ? "black" : "white";
@@ -555,7 +563,10 @@ const reducer = (state = initialState, action) => {
           .flat()
           .find((item) => item.square == enPassant.pawnSquare);
 
-        newState.players[onTurn].piecesTaken.push(capturedSquare.piece);
+        newState.players[onTurn].piecesTaken = [
+          ...newState.players[onTurn].piecesTaken,
+          capturedSquare.piece,
+        ];
 
         capturedSquare.piece = null;
         capturedSquare.isOccupied = false;
@@ -830,6 +841,7 @@ const reducer = (state = initialState, action) => {
         ...newState.players[onTurn],
         squareSelected: false,
         pieceSelected: false,
+        piecesTaken: newState.gameControls.piecesStorage,
       };
 
       newState.gameControls = {

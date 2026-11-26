@@ -1,54 +1,74 @@
 # Chess Game
 
-A browser-based, two-player chess game for playing locally on one device. The interface is built with React, and Redux manages the board and game state.
+A browser-based chess game for two people sharing one device. Play White and Black in turn on the same board, with legal-move feedback and game status shown as you play.
 
 ## Features
 
-- Play as White and Black, taking turns on the same board.
-- See available destinations when selecting a piece.
-- Capture pieces and see captured pieces in each player's panel.
-- See whose turn it is and when a king is in check.
-- Responsive board layout with light and dark color-scheme support.
+- Hot-seat, two-player games with no account or server required.
+- Highlights available moves when you select a piece.
+- Handles captures, check, and moves that would leave your own king in check.
+- Supports castling, en passant, and pawn promotion (choose a queen, rook, bishop, or knight).
+- Detects checkmate and stalemate, and displays the winner or draw.
+- Shows captured pieces and whose turn it is.
+- Responsive board styling with light and dark color-scheme support.
 
-This project implements basic piece movement and check handling, but is not a complete implementation of tournament chess rules. Castling, en passant, pawn promotion, checkmate, and stalemate detection are not implemented.
+This is a focused chess game rather than a full tournament platform: it has no online play, clocks, saved games, or draw rules beyond stalemate.
 
 ## Getting started
 
 ### Requirements
 
-- Node.js and npm (use versions supported by Vite).
+- Node.js `^20.19.0` or `>=22.12.0`
+- npm
 
 ### Install and run
 
 ```sh
-git clone <repository-url>
+git clone https://github.com/vobradovic17/chess-game.git
 cd chess-game
 npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite in your browser. To play, select one of the current player's pieces; available destinations are highlighted. Select a highlighted square to move, select the same piece again to deselect it, or select another piece of the same color to switch pieces.
+Open the local address printed by Vite in your browser. The game starts with White to move. Select one of your pieces to see its available destinations, then select a highlighted square to move. Select the same piece again to deselect it, or select another piece of your color to switch selection. If a pawn reaches the opposite end of the board, choose what piece it promotes to.
 
-### Other commands
+The game runs locally in the browser; reloading the page starts a new game.
+
+### Available commands
 
 ```sh
-npm run build    # Build the production site in dist/
+npm run dev      # Start the Vite development server with hot reload
+npm run build    # Create a production build in dist/
 npm run preview  # Preview the production build locally
 npm run lint     # Run ESLint
 ```
 
+There is currently no automated test runner configured.
+
 ## Project structure
 
-- [`src/components/ChessBoard.jsx`](src/components/ChessBoard.jsx) renders the board and handles square clicks.
-- [`src/components/PlayerInfo.jsx`](src/components/PlayerInfo.jsx) displays each player's turn, check status, and captured pieces.
-- [`src/store/index.js`](src/store/index.js) contains the Redux store and game rules.
-- [`src/utils/index.js`](src/utils/index.js) creates the initial board.
+- `src/App.jsx` — page layout and player panels.
+- `src/components/ChessBoard.jsx` — board rendering, click handling, and promotion selection.
+- `src/components/PlayerInfo.jsx` — turn, check, result, and captured-piece display.
+- `src/store/index.js` — Redux store, move rules, check detection, and game-ending logic.
+- `src/utils/index.js` — board setup and file names (A–H).
+- `src/assets/` — chess-piece SVG artwork.
+
+The app is built with React 19 and Redux 5, and uses Vite for development and production builds.
 
 ## Help
 
-For project-specific questions or to report a problem, open an issue in the repository where you obtained this project. For setup or tool questions, see the [Vite documentation](https://vite.dev/guide/) and [React documentation](https://react.dev/learn).
+For project questions or bug reports, [open an issue](https://github.com/vobradovic17/chess-game/issues). For tools used by the project, see the [Vite guide](https://vite.dev/guide/) and [React documentation](https://react.dev/learn).
 
 ## Maintainers and contributing
 
-No individual maintainer or contribution guide is currently listed in the repository. Contributions are welcome: open an issue to discuss a change, or submit a pull request. Before submitting, run `npm run lint` and `npm run build`.
+No individual maintainer or separate contribution guide is listed in this repository. Contributions are welcome: open an issue to discuss a larger change, then submit a pull request with a concise description of the change.
 
+Before submitting a pull request, run:
+
+```sh
+npm run lint
+npm run build
+```
+
+Keep changes focused and include any relevant updates to the README.

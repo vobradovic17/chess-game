@@ -10,10 +10,6 @@ const initialState = {
     lastMove: null,
     // "playing" | "checkmate" | "stalemate"
     status: "playing",
-    // { square, pawnSquare } when the side to move can capture en passant
-    enPassant: null,
-    // set by MOVE_PIECE, assigned to enPassant by END_MOVE if the move is legal
-    pendingEnPassant: null,
   },
   players: {
     white: {
@@ -22,6 +18,7 @@ const initialState = {
       pieceSelected: false,
       squareSelected: null,
       piecesTaken: [],
+      enPassant: null,
     },
     black: {
       color: "black",
@@ -29,6 +26,7 @@ const initialState = {
       pieceSelected: false,
       squareSelected: null,
       piecesTaken: [],
+      enPassant: null,
     },
   },
 };
@@ -228,6 +226,7 @@ const reducer = (state = initialState, action) => {
     let piece = action.payload.square.piece.piece;
     let color = action.payload.square.piece.color;
     let isWhitePlayer = color == "white";
+    const opponent = isWhitePlayer ? "black" : "white";
 
     // set movements for every piece by piece
     if (piece == "pawn") {
@@ -275,7 +274,7 @@ const reducer = (state = initialState, action) => {
       }
 
       // en passant: target square is empty, so it is not covered by the attacks above
-      const enPassant = newState.gameControls.enPassant;
+      const enPassant = newState.players[opponent].enPassant;
       if (enPassant) {
         [columnForwardLeft, columnForwardRight].forEach((attackColumn) => {
           const candidate = chessBoard[rowForward][attackColumn];
@@ -468,7 +467,6 @@ const reducer = (state = initialState, action) => {
 
       // castling
       const homeRow = isWhitePlayer ? 7 : 0;
-      const opponent = isWhitePlayer ? "black" : "white";
       const kingPiece = chessBoard[arrayRow][arrayColumn].piece;
 
       if (
@@ -542,8 +540,9 @@ const reducer = (state = initialState, action) => {
       newState.players[onTurn].piecesTaken.push(newSquare.piece);
     }
 
-    const enPassant = newState.gameControls.enPassant;
-    newState.gameControls.pendingEnPassant = null;
+    const opponent = onTurn == "white" ? "black" : "white";
+    const enPassant = newState.players[opponent].enPassant;
+    newState.players[onTurn].enPassant = null;
 
     if (piece.piece == "pawn") {
       // en passant capture: pawn moved diagonally onto the empty en passant square
@@ -566,7 +565,7 @@ const reducer = (state = initialState, action) => {
 
       // double step: remember the skipped square for the opponent's next move
       if (Math.abs(newSquare.row - oldSquare.row) == 2) {
-        newState.gameControls.pendingEnPassant = {
+        newState.players[onTurn].enPassant = {
           square: `${oldSquare.column}${(newSquare.row + oldSquare.row) / 2}`,
           pawnSquare: newSquare.square,
         };
@@ -1059,14 +1058,9 @@ const reducer = (state = initialState, action) => {
     newState.gameControls = { ...newState.gameControls };
 
     if (!newState.gameControls.nextMove) {
-      // illegal move was reverted: keep the existing en passant opportunity
       newState.gameControls.nextMove = true;
-      newState.gameControls.pendingEnPassant = null;
       return newState;
     }
-
-    newState.gameControls.enPassant = newState.gameControls.pendingEnPassant;
-    newState.gameControls.pendingEnPassant = null;
 
     let player = action.payload.player;
 
